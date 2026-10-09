@@ -62,3 +62,10 @@ backend/.env.*
 *.key
 *.pfx
 *.p12
+
+# Datos privados de desarrollo y operacion
+.local/
+backups/
+respaldos/
+*.dump
+*.backup

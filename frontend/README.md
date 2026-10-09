@@ -1,24 +1,20 @@
-# my-project
+# Frontend de Control Taller
 
-## Project setup
-```
-yarn install
-```
+El flujo completo de instalación, desarrollo y publicación está en
+[la guía del proyecto](../docs/GUIA_PARA_TU_HERMANO.md).
 
-### Compiles and hot-reloads for development
-```
-yarn serve
-```
+Para desarrollo usar `docker compose --profile dev up -d --build` desde la raíz,
+después de configurar los `.env` y la base de prueba. Vite sirve la aplicación
+en `http://localhost:5174` y reenvía `/api` al backend dentro de Docker.
 
-### Compiles and minifies for production
-```
-yarn build
-```
+Para comprobar el frontend fuera de Docker, desde esta carpeta:
 
-### Lints and fixes files
-```
-yarn lint
+```sh
+npm ci --include=optional
+npm run build
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+Los scripts disponibles son `dev`, `build`, `serve` y `start`.
+El repo usa Vite; `serve` ejecuta una vista previa del build y no reemplaza el
+proxy ni el despliegue HTTPS de producción. La instalación limpia se verificó
+con Node 20.19.0. En PowerShell puede usarse `npm.cmd`.

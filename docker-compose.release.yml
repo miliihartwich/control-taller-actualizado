@@ -1,0 +1,7 @@
+# Usar junto a docker-compose.yml, conservando el proyecto Docker del servidor.
+# RELEASE_ID debe ser el SHA completo del commit que se publica.
+services:
+  backend:
+    image: control-taller/backend:${RELEASE_ID:?Define RELEASE_ID con el commit a publicar}
+  frontend:
+    image: control-taller/frontend:${RELEASE_ID:?Define RELEASE_ID con el commit a publicar}
