@@ -10,6 +10,14 @@ El código configura el dominio `app.hartwich.com.uy`. El documento de despliegu
 indica producción en Ohio (`us-east-2`) y staging en Virginia (`us-east-1`);
 hay que confirmar estos datos contra el servidor real.
 
+El documento aportado `Comandos EC2 y base de datos ACTUALIZADO 3.3.26.docx`
+registra PowerShell → WSL → SSH a EC2 Ohio con usuario `ec2-user`, Docker con
+`sudo` y PostgreSQL en **Amazon RDS**, con base `controltaller`, usuario
+`postgres`, puerto `5432` y `sslmode=require`. Sus datos concretos de IP, clave
+y endpoint se guardaron en una ficha local privada; no se publican en esta guía.
+Ese documento no incluye la carpeta del proyecto ni el comando de despliegue:
+todavía hay que completarlos mediante el inventario de la sección 8.
+
 Los ejemplos de la computadora local usan **PowerShell en Windows**. Los del
 servidor usan **Bash en Linux**. Los nombres en MAYÚSCULAS que indican
 `COMPLETAR` o `PEGAR` deben sustituirse antes de ejecutar el bloque.
@@ -20,13 +28,14 @@ servidor usan **Bash en Linux**. Los nombres en MAYÚSCULAS que indican
 flowchart LR
     A[Computadora: editar y probar] <-->|Git| B[GitHub: código e historial]
     B -->|Descargar un commit probado por SSH| C[Servidor AWS: Docker]
-    C --> D[PostgreSQL: datos del taller]
+    C --> D[Amazon RDS PostgreSQL: datos del taller]
     C --> E[Web HTTPS: usuarios del sistema]
 ```
 
 - GitHub guarda fuentes, imágenes del frontend, dependencias y configuración pública.
 - La computadora de desarrollo usa una base de prueba propia.
-- AWS ejecuta una versión concreta del código y se conecta a la base real.
+- EC2 ejecuta los contenedores y se conecta a la base real en RDS, según el
+  documento de referencia. Confirmar esa conexión efectiva antes de publicar.
 - Las contraseñas, los `.env`, las claves SSH, los certificados y los respaldos
   se entregan por un canal privado y se conservan fuera de Git.
 
@@ -302,30 +311,83 @@ o VPN, utilizar el mismo método actual. En Linux/macOS, una `.pem` necesita
 permisos privados como `chmod 400 CLAVE_DEL_SERVIDOR.pem`.
 [Requisitos de conexión SSH en AWS](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/connection-prereqs-general.html).
 
+El procedimiento registrado utiliza WSL. Para seguirlo, abrir primero desde
+PowerShell una distribución WSL ya instalada:
+
+```powershell
+wsl
+```
+
+Después, dentro de WSL, con la clave privada disponible en su carpeta `.ssh`:
+
+```bash
+chmod 400 ~/.ssh/CLAVE_DEL_SERVIDOR.pem
+ssh -i ~/.ssh/CLAVE_DEL_SERVIDOR.pem ec2-user@SERVIDOR
+```
+
+Usar la IP y el nombre real de la clave de la ficha privada. La ruta de WSL es
+una ruta Linux, diferente de `C:\...`. Si SSH da timeout, comprobar con la
+responsable de AWS que la EC2 está `Running` y que la regla de acceso SSH permite
+la IP actual de la computadora del hermano, como recuerda el documento.
+[Comandos básicos de WSL](https://learn.microsoft.com/en-us/windows/wsl/basic-commands).
+
 En el servidor, ejecutar solamente este inventario antes de modificar la instalación:
 
 ```bash
 pwd
-docker version
-docker compose version
-docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}'
-docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' backend_controltaller
-docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' postgres_controltaller
-docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' backend_controltaller
-docker inspect -f '{{index .Config.Labels "com.docker.compose.project.config_files"}}' backend_controltaller
-docker inspect -f '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}' backend_controltaller
-docker inspect -f '{{range $name, $value := .NetworkSettings.Networks}}{{$name}} {{end}}' backend_controltaller
-docker inspect -f '{{range .Mounts}}{{printf "%s -> %s (%s)\n" .Source .Destination .Type}}{{end}}' postgres_controltaller
-docker inspect -f '{{range .Mounts}}{{printf "%s -> %s (%s)\n" .Source .Destination .Type}}{{end}}' backend_controltaller
-docker exec backend_controltaller python -c 'import db; from urllib.parse import urlsplit; u=urlsplit(db.DATABASE_URL); print("host_db=",u.hostname,"base=",u.path.lstrip("/"),"sslmode=",db.sslmode)'
+sudo docker version
+sudo docker compose version
+sudo docker ps --format '{{.Names}}\t{{.Image}}\t{{.Status}}'
+sudo docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' backend_controltaller
+sudo docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' backend_controltaller
+sudo docker inspect -f '{{index .Config.Labels "com.docker.compose.project.config_files"}}' backend_controltaller
+sudo docker inspect -f '{{range .NetworkSettings.Networks}}{{.NetworkID}} {{end}}' backend_controltaller
+sudo docker inspect -f '{{range $name, $value := .NetworkSettings.Networks}}{{$name}} {{end}}' backend_controltaller
+sudo docker inspect -f '{{range .Mounts}}{{printf "%s -> %s (%s)\n" .Source .Destination .Type}}{{end}}' backend_controltaller
+sudo docker exec backend_controltaller python -c 'import db; from urllib.parse import urlsplit; u=urlsplit(db.DATABASE_URL); print("host_db=",u.hostname,"base=",u.path.lstrip("/"),"sslmode=",db.sslmode)'
 ```
 
 Estos nombres de contenedores son los del repo. Si `docker ps` muestra otros,
 usar los nombres reales. Registrar también el comando original de despliegue,
 todos sus archivos `-f`, el volumen de DB y la red que utiliza el backend.
 
+Solo si existe una DB Docker con ese nombre, registrar también sus datos:
+
+```bash
+if sudo docker inspect postgres_controltaller > /dev/null 2>&1; then
+  sudo docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' postgres_controltaller
+  sudo docker inspect -f '{{range .Mounts}}{{printf "%s -> %s (%s)\n" .Source .Destination .Type}}{{end}}' postgres_controltaller
+fi
+```
+
 El `DATABASE_URL` efectivo indica si se usa la DB Docker o una base externa.
 La existencia de un contenedor `db` no demuestra que producción lo use.
+
+El documento también muestra `sudo docker exec -it backend_controltaller sh`
+para entrar al contenedor. Esa terminal está **dentro del contenedor**; usar
+`exit` para volver al host EC2 antes de ejecutar los comandos de despliegue.
+Los comandos Compose y las carpetas de releases pertenecen al host.
+
+### Consultar RDS cuando haga falta
+
+El `psql` del documento requiere un cliente PostgreSQL disponible. El Dockerfile
+actual del backend instala la biblioteca `libpq-dev`, pero no instala el comando
+`psql`; no suponer que está presente dentro del backend.
+
+Después de registrar la red real en `RED_DOCKER`, consultar la versión del servidor
+y utilizar un contenedor cliente. Sustituir `ENDPOINT_RDS_DE_LA_FICHA` antes de ejecutar:
+
+```bash
+RED_DOCKER="PEGAR_NOMBRE_RED_DEL_BACKEND_DEL_INVENTARIO"
+PG_MAJOR="$(sudo docker exec backend_controltaller python -c 'from db import get_db_connection; c=get_db_connection(); print(c.server_version // 10000); c.close()')"
+sudo docker run --rm -it --network "$RED_DOCKER" "postgres:$PG_MAJOR" \
+  psql --password "host=ENDPOINT_RDS_DE_LA_FICHA port=5432 dbname=controltaller user=postgres sslmode=require"
+```
+
+PostgreSQL solicita la contraseña aparte. Entregarla por el canal privado y no
+ponerla en el comando ni en GitHub. Para salir de `psql` usar `\q`.
+Entrar a la consola no es un paso obligatorio de cada despliegue ni una indicación
+de modificar la DB. [Conectar a RDS usando psql](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_ConnectToPostgreSQLInstance.psql.html).
 
 Si el servidor tiene otro proxy, nombres distintos, overrides o redes explícitas,
 adaptar la configuración nueva antes de ejecutar la sección 11. La guía no
@@ -365,9 +427,11 @@ El proyecto Compose debe ser **el original**, no el nombre de la nueva carpeta.
 Compose utiliza ese nombre para identificar servicios, redes y volúmenes.
 [Nombre de proyecto Compose](https://docs.docker.com/reference/cli/docker/compose/).
 
-Si Docker requiere `sudo` en ese servidor, utilizarlo de manera consistente en
-todos los comandos Docker según el acceso ya habilitado. No cambiar permisos del
-servidor como parte de una publicación ordinaria.
+El documento utiliza `sudo docker`; los ejemplos de servidor lo incluyen.
+`sudo` suele limpiar variables de la sesión, por eso la función `dc` y el comando
+de recuperación legacy pasan explícitamente `RELEASE_ID` y `RED_DOCKER` mediante
+`sudo env`. Son metadatos de la release, no contraseñas. No cambiar los permisos
+del servidor como parte de una publicación ordinaria.
 
 Si el servidor usa una deploy key SSH de GitHub para un repo privado, cambiar
 el URL antes de clonar:
@@ -393,40 +457,42 @@ despliegue. Guardar también el `.env` original de la raíz como
 cp "$DIRECTORIO_ANTERIOR/.env" "$OPERACION/shared/.env"
 ```
 
-Ejecutar esa copia solo si el archivo original existe. Si no existía porque el Compose antiguo escribía la
-contraseña directamente en YAML, crear ese archivo privado con la contraseña
-actual que corresponde a `POSTGRES_PASSWORD`, entregada por la responsable.
+Ejecutar esa copia solo si el archivo original existe. Si falta, crearlo con
+`nano "$OPERACION/shared/.env"`. El Compose del repo necesita un valor no vacío
+para `POSTGRES_PASSWORD`, incluso cuando solamente se publican los servicios de
+aplicación y la DB real está en RDS. Para ese caso puede registrarse
+`POSTGRES_PASSWORD=VALOR_LOCAL_NO_USADO_POR_RDS`: ese valor corresponde al servicio
+local `db` que no se arranca en producción mediante este flujo. **La contraseña
+RDS está en el `DATABASE_URL` real del backend y se conserva sin cambiarla.**
 
-Por ejemplo, editarlo con `nano "$OPERACION/shared/.env"` y guardar una línea
-`POSTGRES_PASSWORD=CONTRASENA_REAL_EXISTENTE`, sustituyendo el valor antes de usarlo.
-
-No cambiar esa contraseña para esta transición. Cambiar `POSTGRES_PASSWORD`
-en un `.env` no cambia automáticamente la contraseña de una DB cuyo volumen ya
-está inicializado.
+Si el inventario descubre que la aplicación usa una DB Docker en vez de RDS,
+conservar la contraseña actual de esa DB en `POSTGRES_PASSWORD`. Cambiarla en
+un `.env` no cambia automáticamente la contraseña de un volumen inicializado.
 
 Comprobar en `shared/backend.env` los valores de producción:
 
 | Variable | Valor a conservar o confirmar |
 | --- | --- |
-| `DATABASE_URL` | Misma DB real y mismas credenciales que usa el sistema actual |
+| `DATABASE_URL` | Mismo endpoint RDS real y mismas credenciales que usa el sistema actual; no sustituirlo por `db` |
 | `JWT_SECRET_KEY` | Conservar la clave de producción; no generar una por release |
 | `DEV_NO_AUTH` | `0` |
 | `APP_ENV` | `production` al validar la configuración completa |
 | `FRONT_ORIGIN` | `https://app.hartwich.com.uy`, si ese es el dominio activo |
 | `JWT_COOKIE_SECURE` | `True` para HTTPS |
 | `JWT_COOKIE_SAMESITE` | Conservar el valor probado, normalmente `Lax` con el mismo origen |
-| `PGSSLMODE` | `disable` con PostgreSQL Docker sin TLS; `require` si la DB externa exige TLS |
+| `PGSSLMODE` | `require` para la conexión RDS documentada; confirmar el valor efectivo |
 
-`backend/db.py` pide SSL por defecto cuando `APP_ENV=production`. La imagen
-PostgreSQL de este Compose no configura TLS; en ese caso declarar explícitamente
-`PGSSLMODE=disable`. No trasladar ese ajuste a una DB externa que requiere TLS.
+`backend/db.py` pide SSL por defecto cuando `APP_ENV=production`. La conexión RDS
+documentada utiliza `require`: conservarlo. `PGSSLMODE=disable` del ejemplo de
+desarrollo es para PostgreSQL Docker local sin TLS; no trasladarlo a producción
+RDS. [SSL en RDS PostgreSQL](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/PostgreSQL.Concepts.General.SSL.html).
 
 Antes de construir imágenes nuevas, preservar las dos imágenes actuales:
 
 ```bash
 LEGACY_ID="legacy-$(date -u +%Y%m%dT%H%M%SZ)"
-docker image tag "$(docker inspect -f '{{.Image}}' backend_controltaller)" "control-taller/backend:$LEGACY_ID"
-docker image tag "$(docker inspect -f '{{.Image}}' frontend_controltaller)" "control-taller/frontend:$LEGACY_ID"
+sudo docker image tag "$(sudo docker inspect -f '{{.Image}}' backend_controltaller)" "control-taller/backend:$LEGACY_ID"
+sudo docker image tag "$(sudo docker inspect -f '{{.Image}}' frontend_controltaller)" "control-taller/frontend:$LEGACY_ID"
 printf '%s\n' "$LEGACY_ID" > "$OPERACION/shared/legacy-release.txt"
 ```
 
@@ -441,7 +507,7 @@ de crear una red nueva. Comprobar primero que la red registrada es la utilizada
 por el backend y la DB si esta última está en Docker:
 
 ```bash
-docker network inspect "$RED_DOCKER" --format '{{range .Containers}}{{.Name}} {{end}}'
+sudo docker network inspect "$RED_DOCKER" --format '{{range .Containers}}{{.Name}} {{end}}'
 cat > "$OPERACION/shared/compose.server.yml" <<'YAML'
 networks:
   default:
@@ -459,18 +525,23 @@ también una red que tenga un nombre explícito distinto.
 
 ## 10. Respaldar la DB real antes de publicar
 
+En la arquitectura indicada por el documento, el respaldo debe ser de **RDS**.
+No usar `docker compose exec db pg_dump` como respaldo de producción: ese
+servicio puede ser una DB local distinta. El bloque de esta sección utiliza la
+conexión efectiva del backend para respaldar la DB correcta.
+
 Este procedimiento descarga la conexión efectiva del backend a un archivo
 privado sin mostrarla en la terminal y utiliza un cliente PostgreSQL de la misma
 versión mayor. Sirve tanto para la DB Docker como para una DB externa accesible
 desde la red del backend. Si el respaldo falla, corregirlo antes de publicar.
 
 ```bash
-PG_MAJOR="$(docker exec backend_controltaller python -c 'from db import get_db_connection; c=get_db_connection(); print(c.server_version // 10000); c.close()')"
-docker exec backend_controltaller python -c 'import db; from psycopg2.extensions import make_dsn; print("DATABASE_URL=" + make_dsn(db.DATABASE_URL, sslmode=db.sslmode)); print("PGSSLMODE=" + db.sslmode)' > "$OPERACION/shared/pg-backup.env"
+PG_MAJOR="$(sudo docker exec backend_controltaller python -c 'from db import get_db_connection; c=get_db_connection(); print(c.server_version // 10000); c.close()')"
+sudo docker exec backend_controltaller python -c 'import db; from psycopg2.extensions import make_dsn; print("DATABASE_URL=" + make_dsn(db.DATABASE_URL, sslmode=db.sslmode)); print("PGSSLMODE=" + db.sslmode)' > "$OPERACION/shared/pg-backup.env"
 RESPALDO="$OPERACION/backups/controltaller-$(date -u +%Y%m%dT%H%M%SZ).dump"
-docker run --rm --network "$RED_DOCKER" --env-file "$OPERACION/shared/pg-backup.env" "postgres:$PG_MAJOR" sh -c 'exec pg_dump --format=custom --dbname="$DATABASE_URL"' > "$RESPALDO"
+sudo docker run --rm --network "$RED_DOCKER" --env-file "$OPERACION/shared/pg-backup.env" "postgres:$PG_MAJOR" sh -c 'exec pg_dump --format=custom --dbname="$DATABASE_URL"' > "$RESPALDO"
 test -s "$RESPALDO"
-docker run --rm --network none --mount "type=bind,source=$RESPALDO,target=/backup.dump,readonly" "postgres:$PG_MAJOR" pg_restore --list /backup.dump > "$RESPALDO.listado.txt"
+sudo docker run --rm --network none --mount "type=bind,source=$RESPALDO,target=/backup.dump,readonly" "postgres:$PG_MAJOR" pg_restore --list /backup.dump > "$RESPALDO.listado.txt"
 ```
 
 `pg_restore --list` comprueba que el archivo tiene un formato legible; la
@@ -523,7 +594,7 @@ Definir esta función en la sesión actual para utilizar siempre los mismos arch
 
 ```bash
 dc() {
-  docker compose --env-file "$RUTA_RELEASE/.env" -p "$PROYECTO_DOCKER" \
+  sudo env RELEASE_ID="$RELEASE_ID" RED_DOCKER="$RED_DOCKER" docker compose --env-file "$RUTA_RELEASE/.env" -p "$PROYECTO_DOCKER" \
     -f "$RUTA_RELEASE/docker-compose.yml" \
     -f "$RUTA_RELEASE/docker-compose.release.yml" \
     -f "$OPERACION/shared/compose.server.yml" \
@@ -556,8 +627,8 @@ que Nginx resuelva la dirección actual del backend. La publicación no utiliza
 ```bash
 curl --fail --show-error https://app.hartwich.com.uy/api/health
 dc exec -T backend python -c 'from db import get_db_connection; c=get_db_connection(); q=c.cursor(); q.execute("SELECT 1"); print(q.fetchone()); q.close(); c.close()'
-docker inspect -f '{{.Config.Image}}' backend_controltaller
-docker inspect -f '{{.Config.Image}}' frontend_controltaller
+sudo docker inspect -f '{{.Config.Image}}' backend_controltaller
+sudo docker inspect -f '{{.Config.Image}}' frontend_controltaller
 ```
 
 El HTTP debe responder y la consulta debe mostrar `(1,)`. Las imágenes deben
@@ -589,8 +660,8 @@ COMMIT_ANTERIOR="PEGAR_SHA_DE_LA_RELEASE_QUE_FUNCIONABA"
 RUTA_RELEASE="$OPERACION/releases/$COMMIT_ANTERIOR"
 export RELEASE_ID="$COMMIT_ANTERIOR"
 test -f "$RUTA_RELEASE/docker-compose.release.yml"
-docker image inspect "control-taller/backend:$RELEASE_ID" > /dev/null
-docker image inspect "control-taller/frontend:$RELEASE_ID" > /dev/null
+sudo docker image inspect "control-taller/backend:$RELEASE_ID" > /dev/null
+sudo docker image inspect "control-taller/frontend:$RELEASE_ID" > /dev/null
 dc config --quiet
 dc up -d --no-deps --no-build --force-recreate backend frontend
 ```
@@ -616,7 +687,7 @@ y `RUTA_RELEASE` con la carpeta nueva creada en la sección 11.1.
 ```bash
 ARCHIVO_IMAGENES_RELEASE="$RUTA_RELEASE/docker-compose.release.yml"
 export RELEASE_ID="$(cat "$OPERACION/shared/legacy-release.txt")"
-docker compose -p "$PROYECTO_DOCKER" \
+sudo env RELEASE_ID="$RELEASE_ID" RED_DOCKER="$RED_DOCKER" docker compose -p "$PROYECTO_DOCKER" \
   -f "$DIRECTORIO_ANTERIOR/docker-compose.yml" \
   -f "$ARCHIVO_IMAGENES_RELEASE" --profile prod \
   up -d --no-deps --no-build --force-recreate backend frontend

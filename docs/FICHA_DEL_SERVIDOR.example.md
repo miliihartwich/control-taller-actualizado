@@ -12,8 +12,8 @@ privado acordado, sin incluirlas en esta ficha ni en GitHub.
 | Cuenta AWS / identificador de instancia | COMPLETAR |
 | Región de producción | El documento existente indica Ohio, `us-east-2`; confirmar |
 | Región de staging | El documento existente indica Virginia, `us-east-1`; confirmar si sigue existiendo |
-| Host/IP para SSH | COMPLETAR |
-| Usuario Linux para SSH | COMPLETAR, por ejemplo `ubuntu` o `ec2-user` |
+| Host/IP para SSH | COMPLETAR PRIVADAMENTE; el documento aporta una IP de referencia |
+| Usuario Linux para SSH | El documento registra `ec2-user`; confirmar |
 | Puerto SSH / bastión / VPN, si aplica | COMPLETAR |
 | Ubicación de la clave SSH o acceso personal habilitado | COMPLETAR UBICACIÓN, sin contenido de la clave |
 | Carpeta original del proyecto en producción | COMPLETAR RUTA ABSOLUTA |
@@ -22,11 +22,11 @@ privado acordado, sin incluirlas en esta ficha ni en GitHub.
 | Archivos Compose originales y overrides | COMPLETAR |
 | Contenedores backend / frontend / DB | El repo usa `backend_controltaller`, `frontend_controltaller`, `postgres_controltaller`; confirmar |
 | Red Docker que usa el backend | COMPLETAR |
-| Host de la DB / nombre de DB / versión mayor de PostgreSQL | COMPLETAR SIN CONTRASEÑA |
-| DB en Docker o servicio externo, por ejemplo RDS | COMPLETAR |
+| Host de la DB / nombre de DB / versión mayor de PostgreSQL | Endpoint privado por completar; documento: `controltaller`, usuario `postgres`, puerto `5432`; versión pendiente |
+| DB en Docker o servicio externo, por ejemplo RDS | El documento indica Amazon RDS en `us-east-2`; confirmar conexión efectiva |
 | Nombre real del volumen o ubicación real de los datos PostgreSQL | COMPLETAR |
 | Ubicación original de los `.env` de producción | COMPLETAR |
-| TLS hacia PostgreSQL / valor `PGSSLMODE` efectivo | COMPLETAR |
+| TLS hacia PostgreSQL / valor `PGSSLMODE` efectivo | Documento indica `sslmode=require`; confirmar |
 | Certificados HTTPS y renovación automática | El repo monta `/etc/letsencrypt`; confirmar mecanismo de renovación |
 | Forma de descargar GitHub desde el servidor | Repo público, deploy key u otro acceso configurado; confirmar |
 | Tareas programadas / cron / timers / backups automáticos | COMPLETAR, incluyendo rutas que dependan del directorio viejo |

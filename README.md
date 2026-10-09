@@ -11,6 +11,10 @@ Explica cómo preparar otra computadora, importar una base de prueba, editar,
 probar, trabajar con GitHub y actualizar producción en AWS por SSH y Docker,
 incluyendo la primera adopción del repositorio y cómo volver a la versión anterior.
 
+El documento de referencia aportado describe EC2 en Ohio, acceso mediante WSL/SSH,
+Docker con `sudo` y una base PostgreSQL en RDS. Los datos concretos de acceso deben
+guardarse en la ficha privada y verificarse antes de publicar.
+
 Completar también una copia privada de la
 [ficha del servidor](docs/FICHA_DEL_SERVIDOR.example.md).
 Hace falta recibir acceso a GitHub/SSH, la configuración real del servidor y una
@@ -20,7 +24,7 @@ base de prueba: el repositorio todavía no contiene esquema SQL ni datos inicial
 
 1. Copiar `.env.example` a `.env` y `backend/.env.example` a `backend/.env`.
 2. Definir las contraseñas y una clave aleatoria para `JWT_SECRET_KEY`.
-3. Usar la misma contraseña en `POSTGRES_PASSWORD` y en `DATABASE_URL`.
+3. En desarrollo Docker, usar la misma contraseña en `POSTGRES_PASSWORD` y en `DATABASE_URL`.
    Dentro de Docker el host de PostgreSQL es `db`; fuera de Docker es `localhost`.
 
 Para desarrollo, seguir el perfil Docker `dev` de la guía. El proxy Vite actual
