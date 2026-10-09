@@ -1,0 +1,64 @@
+# macOS
+.DS_Store
+
+# Node.js
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+.Python
+env/
+venv/
+.venv/
+.venv_*/
+.venv_linu/
+.venv_linux/
+
+# Local env files
+.env
+.env.local
+.env.*.local
+!.env.example
+backend/.env.development
+frontend/.env.development
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Editor/IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Keys/Secrets
+*.pem
+
+# Configuracion privada del backend
+backend/.env.*
+!backend/.env.example
+
+# Paquetes e imagenes generados para despliegue
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Claves privadas
+*.key
+*.pfx
+*.p12

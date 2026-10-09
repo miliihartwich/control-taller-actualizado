@@ -1,0 +1,15 @@
+# docker-compose.dev.yml
+services:
+  db:
+    image: postgres:15
+    container_name: pg_dev_controltaller
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpass_postgres
+      POSTGRES_DB: control_taller_dev
+    ports:
+      - "55432:5432"   # evita conflictos con otros servicios
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+volumes:
+  pgdata_dev:
